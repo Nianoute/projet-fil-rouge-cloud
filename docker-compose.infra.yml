@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # OpenTelemetry Collector - receives traces and metrics from services
   otel-collector:
@@ -12,6 +10,8 @@ services:
       - "4318:4318"
       # Metrics endpoint (port 8888) - for Prometheus scraping collector's internal metrics
       - "8888:8888"
+      # Metrics endpoint (port 8889) - for Prometheus scraping collector's internal metrics
+      - "8889:8889"
     volumes:
       # Mount the OTel Collector configuration
       - ./infra/otel/config.yml:/etc/otel-collector-config.yml
@@ -24,21 +24,20 @@ services:
 
   # Tempo - distributed tracing backend
   tempo:
-    image: grafana/tempo:latest
+    image: grafana/tempo:2.6.1
     container_name: tempo
     ports:
       # API/UI port (port 3200) - for Grafana to query traces
       - "3200:3200"
-      # gRPC port (port 4317) - for receiving traces from OTel Collector
-      - "4317:4317"
     volumes:
       # Mount the Tempo configuration
-      - ./infra/tempo/tempo.yml:/etc/tempo.yml
-      # Persistent storage for traces
-      - tempo-storage:/tmp/tempo
+      - ./infra/tempo/tempo.yml:/etc/tempo/tempo.yml
+      # # Persistent storage for traces
+      # - tempo-storage:/tmp/tempo
+      # - 
     environment:
-      - TEMPO_CONFIG_PATH=/etc/tempo.yml
-    command: ["-config.file=/etc/tempo.yml"]
+      - TEMPO_CONFIG_PATH=/etc/tempo/tempo.yml
+    command: ["-config.file=/etc/tempo/tempo.yml"]
     networks:
       - taskflow
     depends_on:

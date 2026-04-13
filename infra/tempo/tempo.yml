@@ -21,21 +21,21 @@ storage:
     wal:
       # Write-Ahead Log configuration
       # Ensures traces are not lost in case of crash
-      enabled: true
+      # enabled: true
       path: /tmp/tempo/wal
     local:
       # Local disk storage for traces
-      path: /tmp/tempo/blocks
-    cache: memcached
-    memcached:
-      batch_size: 1024
-      parallelism: 100
+      path: /tmp/tempo/traces
+    # cache: memcached
+    # memcached:
+    #   batch_size: 1024
+    #   parallelism: 100
 
 querier:
   # Query frontend for serving requests
   max_concurrent_queries: 20
 
-limits:
-  # Global trace ingestion limit
-  max_traces_per_user: 10000
-  max_bytes_per_trace: 5000000
+# limits:
+#   # Global trace ingestion limit
+#   max_traces_per_user: 10000
+#   max_bytes_per_trace: 5000000
