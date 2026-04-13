@@ -1,14 +1,51 @@
 global:
+  # Global scrape interval - how often to scrape targets
+  scrape_interval: 15s
+  # Global evaluation interval - how often to evaluate alert rules
   evaluation_interval: 15s
-  # ...
+  # Global labels applied to all time series
+  external_labels:
+    cluster: 'taskflow'
+    environment: 'local'
 
+# Scrape configurations for different targets
 scrape_configs:
-  - job_name: prometheus
+  # Prometheus itself
+  - job_name: 'prometheus'
     static_configs:
-      - targets: ["localhost:9090"]
+      - targets: ['localhost:9090']
 
-  - job_name: api-gateway
+  # API Gateway service
+  - job_name: 'api-gateway'
     static_configs:
-      - targets: [...]
+      - targets: ['api-gateway:3000']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
 
-  # ...
+  # Task Service
+  - job_name: 'task-service'
+    static_configs:
+      - targets: ['task-service:3002']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  # User Service
+  - job_name: 'user-service'
+    static_configs:
+      - targets: ['user-service:3001']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  # Notification Service
+  - job_name: 'notification-service'
+    static_configs:
+      - targets: ['notification-service:3003']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  # OpenTelemetry Collector - exposes its own internal metrics
+  - job_name: 'otel-collector'
+    static_configs:
+      - targets: ['otel-collector:8888']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
