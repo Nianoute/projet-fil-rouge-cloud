@@ -1,26 +1,53 @@
 receivers:
-  otlp: 
-    # ...
+  # OTLP receiver accepts traces/metrics via gRPC (4317) and HTTP (4318)
+  otlp:
+    protocols:
+      # gRPC protocol - more performant for service-to-service communication
+      grpc:
+        endpoint: 0.0.0.0:4317
+      # HTTP protocol - used by our services via http://otel-collector:4318
+      http:
+        endpoint: 0.0.0.0:4318
 
 processors:
-  batch: {}
+  # Batch processor groups telemetry into batches for efficient export
+  batch:
+    timeout: 10s
+    send_batch_size: 1024
 
 exporters:
-  otlp/tempo: 
-    # ...
-  debug: 
-    #...
+  # Exporter to Tempo (using gRPC for performance)
+  otlp/tempo:
+    client:
+      endpoint: tempo:4317
+      tls:
+        insecure: true
+  
+  # Debug exporter for console output (useful for debugging)
+  debug:
+    verbosity: detailed
+
+  # Prometheus exporter - exposes metrics on port 8888
+  prometheus:
+    endpoint: "0.0.0.0:8888"
 
 service:
-  telemetry: 
+  telemetry:
     metrics:
-      # ...
+      # Expose OpenTelemetry Collector's own metrics on port 8888
+      # Prometheus will scrape these metrics from /metrics endpoint
+      level: detailed
+      address: 0.0.0.0:8888
+
   pipelines:
+    # Traces pipeline: receive traces → batch → export to Tempo & debug
     traces:
-      receivers: [...]
-      processors: [...]
-      exporters: [...]
-    metrics: 
-      receivers: [...]
-      processors: [...]
-      exporters: [...]
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlp/tempo, debug]
+    
+    # Metrics pipeline: receive metrics → batch → export to Prometheus & debug
+    metrics:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [prometheus, debug]
