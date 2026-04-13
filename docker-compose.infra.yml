@@ -1,41 +1,107 @@
-  # TP : Ce fichier est volontairement incomplet.
-  # Votre mission :
-  # 1. Compléter la config OTel Collector dans infra/otel/config.yml
-  # 2. Compléter prometheus.yml avec les scrape_configs de chaque service
-  # 3. Vérifier que Grafana reçoit bien des données
+version: '3.8'
 
-# services:
-#   otel-collector:
-#     image: otel/opentelemetry-collector-contrib:latest
-#     ports:
-#       - "4317:4317"   # gRPC
-#       - "4318:4318"   # HTTP
-#       - "8888:8888"   # métriques internes du collector
-#     volumes:
-#       - ./infra/otel/config.yml:/etc/otel/config.yml
-#     command: ["--config=/etc/otel/config.yml"]
+services:
+  # OpenTelemetry Collector - receives traces and metrics from services
+  otel-collector:
+    image: otel/opentelemetry-collector:latest
+    container_name: otel-collector
+    ports:
+      # gRPC receiver (port 4317) - for service-to-service communication
+      - "4317:4317"
+      # HTTP receiver (port 4318) - for traces/metrics via HTTP
+      - "4318:4318"
+      # Metrics endpoint (port 8888) - for Prometheus scraping collector's internal metrics
+      - "8888:8888"
+    volumes:
+      # Mount the OTel Collector configuration
+      - ./infra/otel/config.yml:/etc/otel-collector-config.yml
+    environment:
+      - OTEL_CONFIG_PATH=/etc/otel-collector-config.yml
+    command: ["--config=/etc/otel-collector-config.yml"]
+    networks:
+      - taskflow
+    depends_on: []
 
-#   prometheus:
-#     image: prom/prometheus:latest
-#     ports:
-#       - "9090:9090"
-#     volumes:
-#       - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
-#       - prometheus_data:/prometheus
+  # Tempo - distributed tracing backend
+  tempo:
+    image: grafana/tempo:latest
+    container_name: tempo
+    ports:
+      # API/UI port (port 3200) - for Grafana to query traces
+      - "3200:3200"
+      # gRPC port (port 4317) - for receiving traces from OTel Collector
+      - "4317:4317"
+    volumes:
+      # Mount the Tempo configuration
+      - ./infra/tempo/tempo.yml:/etc/tempo.yml
+      # Persistent storage for traces
+      - tempo-storage:/tmp/tempo
+    environment:
+      - TEMPO_CONFIG_PATH=/etc/tempo.yml
+    command: ["-config.file=/etc/tempo.yml"]
+    networks:
+      - taskflow
+    depends_on:
+      - otel-collector
 
-#   grafana:
-#     image: grafana/grafana:latest
-#     ports:
-#       - "3100:3000"
-#     environment:
-#       GF_SECURITY_ADMIN_PASSWORD: admin
-#       GF_USERS_ALLOW_SIGN_UP: "false"
-#     volumes:
-#       - grafana_data:/var/lib/grafana
-#       - ./infra/grafana/provisioning:/etc/grafana/provisioning
-#     depends_on:
-#       - prometheus
+  # Prometheus - metrics database
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      # Web UI and API (port 9090)
+      - "9090:9090"
+    volumes:
+      # Mount the Prometheus configuration
+      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      # Persistent storage for metrics
+      - prometheus-storage:/prometheus
+    environment:
+      - PROMETHEUS_CONFIG_PATH=/etc/prometheus/prometheus.yml
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=30d"
+    networks:
+      - taskflow
+    depends_on:
+      - otel-collector
 
-# volumes:
-#   prometheus_data:
-#   grafana_data:
+  # Grafana - visualization platform
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      # Web UI (port 3000)
+      - "3000:3000"
+    volumes:
+      # Provision datasources automatically
+      - ./infra/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
+      # Provision dashboards automatically
+      - ./infra/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards
+      # Persistent storage for Grafana preferences, users, etc.
+      - grafana-storage:/var/lib/grafana
+    environment:
+      # Admin credentials
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      # Disable public signup (only admin can create users)
+      - GF_USERS_ALLOW_SIGN_UP=false
+      # Log level
+      - GF_LOG_LEVEL=info
+    networks:
+      - taskflow
+    depends_on:
+      - prometheus
+      - tempo
+
+volumes:
+  tempo-storage:
+    driver: local
+  prometheus-storage:
+    driver: local
+  grafana-storage:
+    driver: local
+
+networks:
+  taskflow:
+    driver: bridge
