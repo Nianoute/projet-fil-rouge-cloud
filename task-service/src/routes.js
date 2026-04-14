@@ -1,8 +1,26 @@
 const express = require("express");
 const db = require("./db");
 const { publish } = require("./publisher");
+const { tasksCreatedTotal, tasksStatusChangesTotal, tasksGauge } = require("./metrics");
 
 const router = express.Router();
+
+// Helper function to update task gauge
+async function updateTasksGauge() {
+  try {
+    const result = await db.query(
+      "SELECT status, COUNT(*) as count FROM tasks GROUP BY status"
+    );
+    // Reset gauge
+    tasksGauge.reset();
+    // Update with current counts
+    result.rows.forEach((row) => {
+      tasksGauge.set({ status: row.status }, parseInt(row.count));
+    });
+  } catch (err) {
+    // Silently fail to not disrupt main operation
+  }
+}
 
 // GET /tasks
 router.get("/", async (req, res) => {
@@ -68,11 +86,17 @@ router.post("/", async (req, res) => {
     );
     const task = result.rows[0];
 
+    // Track metric: task created with priority
+    tasksCreatedTotal.inc({ priority: task.priority });
+
     await publish("task.created", {
       taskId: task.id,
       title: task.title,
       assigneeId: task.assignee_id,
     });
+
+    // Update gauge
+    await updateTasksGauge();
 
     res.status(201).json(task);
   } catch (err) {
@@ -114,6 +138,12 @@ router.patch("/:id", async (req, res) => {
     const task = result.rows[0];
 
     if (status && status !== current.rows[0].status) {
+      // Track metric: status change
+      tasksStatusChangesTotal.inc({
+        from_status: current.rows[0].status,
+        to_status: status,
+      });
+
       await publish("task.status_changed", {
         taskId: task.id,
         oldStatus: current.rows[0].status,
@@ -121,6 +151,9 @@ router.patch("/:id", async (req, res) => {
         assigneeId: task.assignee_id,
       });
     }
+
+    // Update gauge
+    await updateTasksGauge();
 
     res.json(task);
   } catch (err) {
@@ -137,6 +170,10 @@ router.delete("/:id", async (req, res) => {
     );
     if (!result.rows[0])
       return res.status(404).json({ error: "Task not found" });
+
+    // Update gauge
+    await updateTasksGauge();
+
     res.status(204).send();
   } catch (err) {
     res.status(500).json({ error: "Internal server error" });
