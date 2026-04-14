@@ -6,7 +6,7 @@ Architecture multi-services pour apprendre Kubernetes, l'observabilité et le CI
 
 | Service | Port | Rôle |
 |---|---|---|
-| api-gateway | 3000 | Point d'entrée unique, auth JWT |
+| api-gateway | 4000 | Point d'entrée unique, auth JWT |
 | user-service | 3001 | Gestion des utilisateurs |
 | task-service | 3002 | CRUD des tâches |
 | notification-service | 3003 | Événements via Redis Pub/Sub |
@@ -26,7 +26,7 @@ Architecture multi-services pour apprendre Kubernetes, l'observabilité et le CI
 | Outil | Port | Rôle |
 |---|---|---|
 | Prometheus | 9090 | Collecte des métriques |
-| Grafana | 3100 | Visualisation (métriques, logs, traces) |
+| Grafana | 3000 | Visualisation (métriques, logs, traces) |
 | Tempo | 3200 | Backend de traces distribuées |
 | Loki | 3101 | Agrégation des logs |
 | OTel Collector | 4317/4318 | Récepteur traces/métriques (gRPC/HTTP) |
@@ -48,7 +48,7 @@ docker compose -f docker-compose.infra.yml up -d
 
 ### Accès Grafana
 
-- **URL** : http://localhost:3000
+- **URL** : http://localhost:300
 - **Login** : admin / admin
 
 ### Métriques clés instruées
