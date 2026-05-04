@@ -41,6 +41,12 @@ commande :
 kubectl apply -f k8s/base/namespace.yaml
 kubectl apply -f k8s/base/postgres/
 
-> Combien de pods sont en `Running` ? 3
-> Sur quels nœuds sont-ils schedulés ? 0
+> Combien de pods sont en `Running` ? 3 mais suite à un relancement du projet je suis passé à 2. Un ancien pods s'est détaché du son nouvelle état suite à un changement de code et/ou commande
+> Sur quels nœuds sont-ils schedulés ? taskflow-worker et taskflow-worker2
 
+> 1. Quelle propriété du StatefulSet garantit que chaque Pod conserve toujours le même volume de stockage, même après un redémarrage ou un rescheduling sur un autre nœud ?
+C'est cette propriété qui crée un PVC dédié et nommé de manière stable pour chaque Pod (postgres-data-postgres-0, postgres-data-postgres-1…). Contrairement à un volume classique, le PVC survit à la suppression du Pod et se relie au même Pod au redémarrage, quel que soit le nœud.
+> 2. Pourquoi un Deployment serait-il inadapté pour PostgreSQL, même si techniquement on peut lui attacher un volume ?
+Un Deployment génère des Pods avec des noms aléatoires et interchangeables. Si le Pod est recréé, il peut recevoir un nouveau PVC (ou aucun si mal configuré), perdant ainsi les données. De plus, avec plusieurs replicas, plusieurs Pods écriraient simultanément sur le même volume → corruption des données. PostgreSQL a besoin d'un identifiant réseau stable et d'un stockage garanti : exactement ce que le StatefulSet fournit.
+> 3. Parmi les services restants de la stack TaskFlow (Redis, notification-service, `api-gateway`, frontend), lequel mériterait potentiellement un StatefulSet plutôt qu'un Deployment en production ? Justifiez votre choix.
+Redis est le seul candidat sérieux au StatefulSet parmi ces services. En mode persistance (AOF/RDB) ou cluster Redis, chaque nœud doit conserver ses données et son identité réseau stable. Les autres (api-gateway, notification-service, frontend) sont stateless par nature : pas de stockage local, interchangeables, donc un Deployment suffit largement.
