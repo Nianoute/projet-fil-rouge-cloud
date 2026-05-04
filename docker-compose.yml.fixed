@@ -1,0 +1,118 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    env_file:
+      .env
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U taskflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  user-service:
+    build: ./user-service
+    # ⚠️ MODIFICATION: Enlever le port fixe pour permettre le scaling
+    # ports:
+    #   - "3001:3001"
+    env_file:
+      .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - taskflow
+
+  task-service:
+    build: ./task-service
+    # ⚠️ MODIFICATION: Enlever le port fixe pour permettre le scaling
+    # Garder uniquement le premier replica sur le port 3002 pour les tests locaux
+    # ports:
+    #   - "3002:3002"
+    env_file:
+      .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - taskflow
+
+  notification-service:
+    build: ./notification-service
+    # ⚠️ MODIFICATION: Enlever le port fixe pour permettre le scaling
+    # ports:
+    #   - "3003:3003"
+    env_file:
+      .env
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - taskflow
+
+  api-gateway:
+    build: ./api-gateway
+    ports:
+      - "4000:4000"
+    env_file:
+      .env
+    depends_on:
+      - user-service
+      - task-service
+      - notification-service
+    networks:
+      - taskflow
+    # ⚠️ IMPORTANT: Faire pointer vers les noms de service Docker
+    # dans les variables d'environnement
+    environment:
+      USER_SERVICE_URL: http://user-service:3001
+      TASK_SERVICE_URL: http://task-service:3002
+      NOTIFICATION_SERVICE_URL: http://notification-service:3003
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      - api-gateway
+    networks:
+      - taskflow
+
+volumes:
+  postgres_data:
+
+networks:
+  taskflow:
+    driver: bridge
+
+# UTILISATION AVEC SCALING:
+#   docker compose up                     # Lance 1 de chaque service
+#   docker compose up --scale task-service=3  # Lance 3 replicas du task-service
+#   docker compose up --scale task-service=3 --scale user-service=2
+#
+# AVANTAGES APRÈS CORRECTION:
+#   ✓ Pas de conflit de ports (les replicas partagent le port interne 3002)
+#   ✓ Load balancing automatique par Docker (VIP interne)
+#   ✓ Services communiquent par hostname (task-service résout à une VIP)
+#   ✓ Tous les replicas reçoivent du trafic
+#
+# LIMITATIONS PERSISTANTES:
+#   ✗ Prometheus ne verra qu'une seule replica (service discovery limité)
+#   ✗ Pas de failover automatique
+#   ✗ Pas d'auto-scaling basé sur les métriques

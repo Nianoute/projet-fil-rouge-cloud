@@ -1,0 +1,137 @@
+// Fichier de configuration pour des panels Grafana supplémentaires
+// Répond à la Question 10 en montrant ce qui devrait être mesuré
+
+{
+  "dashboard": {
+    "title": "TaskFlow - Performance & Queue Monitoring",
+    "description": "Améliorations pour dectect queue et limites OS",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Latency p50/p95/p99 (Processing only)",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, rate(http_request_processing_duration_seconds[1m]))",
+            "legendFormat": "p50"
+          },
+          {
+            "expr": "histogram_quantile(0.95, rate(http_request_processing_duration_seconds[1m]))",
+            "legendFormat": "p95"
+          },
+          {
+            "expr": "histogram_quantile(0.99, rate(http_request_processing_duration_seconds[1m]))",
+            "legendFormat": "p99"
+          }
+        ],
+        "description": "Temps de traitement INTERNE (comme Grafana le fait actuellement)"
+      },
+
+      {
+        "id": 2,
+        "title": "Queue Duration p50/p95/p99 (NEW!)",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, rate(http_request_queue_duration_seconds[1m]))",
+            "legendFormat": "p50"
+          },
+          {
+            "expr": "histogram_quantile(0.95, rate(http_request_queue_duration_seconds[1m]))",
+            "legendFormat": "p95"
+          },
+          {
+            "expr": "histogram_quantile(0.99, rate(http_request_queue_duration_seconds[1m]))",
+            "legendFormat": "p99"
+          }
+        ],
+        "description": "Temps d'ATTENTE avant que Node.js traite la requête (manquant avant!)"
+      },
+
+      {
+        "id": 3,
+        "title": "Total Latency = Processing + Queue (Matches K6!)",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(http_request_processing_duration_seconds[1m])) + histogram_quantile(0.95, rate(http_request_queue_duration_seconds[1m]))",
+            "legendFormat": "p95 total"
+          }
+        ],
+        "description": "La somme des deux = ce que K6 mesure! Devrait matcher ~680ms"
+      },
+
+      {
+        "id": 4,
+        "title": "Request Queue Depth (Live)",
+        "targets": [
+          {
+            "expr": "http_request_queue_depth",
+            "legendFormat": "{{service}}"
+          }
+        ],
+        "description": "Combien de requêtes attendent maintenant (rouge si > 5)"
+      },
+
+      {
+        "id": 5,
+        "title": "Database Pool Utilization",
+        "targets": [
+          {
+            "expr": "database_connection_pool_size / 20",
+            "legendFormat": "{{service}} utilization"
+          },
+          {
+            "expr": "database_connection_pool_waiting",
+            "legendFormat": "{{service}} waiting connections"
+          }
+        ],
+        "description": "Si pool waiting > 0, il y a contention DB → bottleneck!"
+      },
+
+      {
+        "id": 6,
+        "title": "OS Connection Errors",
+        "targets": [
+          {
+            "expr": "rate(os_connection_refused_total[1m])",
+            "legendFormat": "Refused/sec"
+          },
+          {
+            "expr": "rate(client_connection_errors_total[1m])",
+            "legendFormat": "Client errors/sec"
+          }
+        ],
+        "description": "Indicateur précoce que le service est saturé (avant erreurs HTTP)"
+      },
+
+      {
+        "id": 7,
+        "title": "Comparison: K6 vs Grafana Metrics",
+        "templatestring": "Shows why there was a 5x gap in Question 10",
+        "details": [
+          "K6 measure end-to-end: K6 p95 = 680ms",
+          "  ├─ Queue (540ms) - manquait avant",
+          "  ├─ Processing (140ms) - montré par Grafana",
+          "  └─ Other (overhead)",
+          "",
+          "Grafana measured only: processing p95 = 150ms",
+          "  → Ignorait complètement la queue de 540ms!",
+          "",
+          "Avec les nouveaux panels:",
+          "  ✓ Queue duration p95 = 540ms",
+          "  ✓ Processing duration p95 = 150ms",
+          "  ✓ Total = 690ms (proche de K6!)"
+        ]
+      }
+    ],
+
+    "exportedDashboardUIState": {
+      "panels": {
+        "1": { "isVisible": true, "isCollapsed": false },
+        "2": { "isVisible": true, "isCollapsed": false, "highlight": "NEW" },
+        "3": { "isVisible": true, "isCollapsed": false, "highlight": "NEW" },
+        "4": { "isVisible": true, "isCollapsed": false, "highlight": "NEW" },
+        "5": { "isVisible": true, "isCollapsed": false, "highlight": "NEW" },
+        "6": { "isVisible": true, "isCollapsed": false, "highlight": "NEW" }
+      }
+    }
+  }
+}
