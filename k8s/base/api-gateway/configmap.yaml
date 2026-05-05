@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: api-gateway-cm
+  namespace: staging
+data:
+  NODE_ENV: "production"
+  PORT: "3000"
+  LOG_LEVEL: "info"
+  USER_SERVICE_URL: "http://user-service"
+  TASK_SERVICE_URL: "http://task-service"
+  NOTIFICATION_SERVICE_URL: "http://notification-service"

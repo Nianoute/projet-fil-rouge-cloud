@@ -1,0 +1,9 @@
+# configmap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: frontend-cm
+  namespace: staging
+data:
+  API_GATEWAY_URL: "http://api-gateway:3000"
+  NODE_ENV: "production"

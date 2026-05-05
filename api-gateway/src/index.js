@@ -20,7 +20,7 @@ app.use(
   pinoHttp({
     logger,
     customLogLevel: (req, res) => {
-      if (res.statusCode >= ERROR_CODE) return "error";
+      if (res.statusCode >= 400) return "error";
       return "info";
     },
     customSuccessMessage: (req, res) => {

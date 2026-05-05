@@ -1,38 +1,33 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: user-service
+  name: api-gateway
   namespace: staging
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: user-service
+      app: api-gateway
   template:
     metadata:
       labels:
-        app: user-service
+        app: api-gateway
     spec:
       containers:
-        - name: user-service
-          image: taskflow-user-service:v1.0.0
+        - name: api-gateway
+          image: taskflow-api-gateway:v1.0.0
           imagePullPolicy: Never
           ports:
             - containerPort: 3000
               protocol: TCP
           envFrom:
             - configMapRef:
-                name: user-service-cm
+                name: api-gateway-cm
           env:
-            - name: DB_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: user-service-secret
-                  key: db-password
             - name: JWT_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: user-service-secret
+                  name: api-gateway-secret
                   key: jwt-secret
           livenessProbe:
             httpGet:
@@ -48,10 +43,3 @@ spec:
             initialDelaySeconds: 5
             periodSeconds: 10
             failureThreshold: 3
-          resources:
-            requests:
-              memory: "128Mi"
-              cpu: "100m"
-            limits:
-              memory: "256Mi"
-              cpu: "200m"
