@@ -13,6 +13,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - taskflow
 
   redis:
     image: redis:7-alpine
@@ -23,6 +25,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - taskflow
 
   user-service:
     build: ./user-service
@@ -33,6 +37,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    networks:
+      - taskflow
 
   task-service:
     build: ./task-service
@@ -45,6 +51,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    networks:
+      - taskflow
 
   notification-service:
     build: ./notification-service
@@ -55,17 +63,21 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+    networks:
+      - taskflow
 
   api-gateway:
     build: ./api-gateway
     ports:
-      - "4000:4000"
+      - "4000:3000"
     env_file:
       .env
     depends_on:
       - user-service
       - task-service
       - notification-service
+    networks:
+      - taskflow
 
   frontend:
     build: ./frontend
@@ -73,6 +85,13 @@ services:
       - "5173:80"
     depends_on:
       - api-gateway
+    networks:
+      - taskflow
 
 volumes:
   postgres_data:
+
+networks:
+  taskflow:
+    name: taskflow
+    driver: bridge

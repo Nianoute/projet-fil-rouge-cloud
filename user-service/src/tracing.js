@@ -12,16 +12,17 @@ const resource = Resource.default().merge(
     [SemanticResourceAttributes.SERVICE_VERSION]: "1.0.0",
   })
 );
+const otlpEndpoint = (process.env.OTEL_EXPORTER_OTLP_ENDPOINT || "http://otel-collector:4318").replace(/\/$/, "");
 
 // Initialize OpenTelemetry SDK with auto-instrumentations
 const sdk = new NodeSDK({
   resource,
   traceExporter: new OTLPTraceExporter({
-    url: process.env.OTEL_EXPORTER_OTLP_ENDPOINT || "http://otel-collector:4318",
+    url: `${otlpEndpoint}/v1/traces`,
   }),
   metricReader: new (require("@opentelemetry/sdk-metrics").PeriodicExportingMetricReader)({
     exporter: new OTLPMetricExporter({
-      url: (process.env.OTEL_EXPORTER_OTLP_ENDPOINT || "http://otel-collector:4318") + "/v1/metrics",
+      url: `${otlpEndpoint}/v1/metrics`,
     }),
   }),
   instrumentations: [getNodeAutoInstrumentations()],
