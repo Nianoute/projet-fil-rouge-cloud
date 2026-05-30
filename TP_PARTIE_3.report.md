@@ -240,8 +240,10 @@ spec:
 > **Question 1** : Vous avez utilisé une commande pour vous connecter à PostgreSQL depuis votre machine. Pourquoi n'avez-vous pas pu vous connecter directement sur `localhost:5432` sans celle-ci ?
 
 PostgreSQL s'exécute **à l'intérieur du cluster Kubernetes**, sur le Service `postgres-service` (ClusterIP) qui n'est accessible que de l'intérieur du cluster. Les ports n'y sont pas exposés vers la machine hôte.
+
 `ClusterIP` = IP virtuelle interne au cluster, non routable depuis l'extérieur
 Pour accéder à PostgreSQL : `kubectl port-forward svc/postgres-service 5432:5432`
+
 L'Ingress, au contraire, écoute sur le port 80 exposé du nœud control-plane et fait le routage HTTP.
 
 ---
