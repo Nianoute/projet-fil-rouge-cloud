@@ -1,13 +1,28 @@
+{{- if .Values.taskflowAlerts.enabled }}
 apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
 metadata:
   name: taskflow-alerts
-  namespace: monitoring
+  namespace: {{ .Release.Namespace }}
   labels:
     release: monitoring
 spec:
   groups:
-    - name: taskflow
+    - name: taskflow.rules
       rules:
-        - alert: ServiceDown
-          # [...]
+        - alert: HighP95Latency
+          expr: |
+            histogram_quantile(
+              0.95,
+              sum by (le) (
+                rate(http_request_duration_ms_bucket{job="task-service"}[1m])
+              )
+            ) > {{ .Values.taskflowAlerts.latencyThresholdMs }}
+          for: 30s
+          labels:
+            severity: warning
+            service: task-service
+          annotations:
+            summary: "P95 latency is high for task-service"
+            description: "task-service P95 latency has been above {{ .Values.taskflowAlerts.latencyThresholdMs }}ms for at least 30 seconds."
+{{- end }}
