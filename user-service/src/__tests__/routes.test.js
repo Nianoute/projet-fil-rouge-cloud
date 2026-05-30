@@ -1,30 +1,46 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import express from 'express'
 import request from 'supertest'
+import { createRequire } from 'module'
 
 // Mock pg — no real DB used
-vi.mock('../db.js', () => ({
-  default: { query: vi.fn() },
-}))
-
-// Mock bcrypt to avoid spending time on hashing in tests
-vi.mock('bcrypt', () => ({
-  default: {
+const mocks = vi.hoisted(() => ({
+  db: { query: vi.fn() },
+  bcrypt: {
     hash: vi.fn().mockResolvedValue('hashed_password'),
     compare: vi.fn(),
   },
-}))
-
-// Mock jsonwebtoken
-vi.mock('jsonwebtoken', () => ({
-  default: {
+  jwt: {
     sign: vi.fn().mockReturnValue('mock_token'),
   },
 }))
 
-import db from '../db.js'
-import bcrypt from 'bcrypt'
-import routes from '../routes.js'
+vi.mock('../db.js', () => ({
+  ...mocks.db,
+  default: mocks.db,
+}))
+
+// Mock bcrypt to avoid spending time on hashing in tests
+vi.mock('bcrypt', () => ({
+  ...mocks.bcrypt,
+  default: mocks.bcrypt,
+}))
+
+// Mock jsonwebtoken
+vi.mock('jsonwebtoken', () => ({
+  ...mocks.jwt,
+  default: mocks.jwt,
+}))
+
+const require = createRequire(import.meta.url)
+const db = mocks.db
+const bcrypt = mocks.bcrypt
+
+require.cache[require.resolve('../db.js')] = { exports: db }
+require.cache[require.resolve('bcrypt')] = { exports: bcrypt }
+require.cache[require.resolve('jsonwebtoken')] = { exports: mocks.jwt }
+
+const routes = require('../routes.js')
 
 const app = express()
 app.use(express.json())

@@ -1,5 +1,5 @@
 require("./tracing");
-const { register } = require("./metrics");
+const { register, recordHttpMetrics } = require("./metrics");
 const express = require("express");
 const pino = require("pino");
 const pinoHttp = require("pino-http");
@@ -24,6 +24,7 @@ app.use(
     customErrorMessage: (req, res, err) => `request failed : ${err.message}`,
   }),
 );
+app.use(recordHttpMetrics);
 
 app.get("/health", (req, res) =>
   res.json({ status: "ok", service: "user-service" }),

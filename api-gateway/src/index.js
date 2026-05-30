@@ -1,5 +1,5 @@
 require("./tracing");
-const { register, upstreamErrorsTotal } = require("./metrics");
+const { register, upstreamErrorsTotal, recordHttpMetrics } = require("./metrics");
 const express = require("express");
 const { createProxyMiddleware } = require("http-proxy-middleware");
 const pino = require("pino");
@@ -30,6 +30,7 @@ app.use(
     customErrorMessage: (req, res, err) => `request failed : ${err.message}`,
   }),
 );
+app.use(recordHttpMetrics);
 
 app.get("/health", (req, res) =>
   res.json({

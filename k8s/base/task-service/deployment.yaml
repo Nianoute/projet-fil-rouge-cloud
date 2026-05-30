@@ -29,6 +29,8 @@ spec:
                 secretKeyRef:
                   name: task-service-secret
                   key: db-password
+            - name: DATABASE_URL
+              value: "postgresql://taskflow_user:$(DB_PASSWORD)@postgres:5432/taskflow"
           livenessProbe:
             httpGet:
               path: /health
@@ -38,8 +40,15 @@ spec:
             failureThreshold: 3
           readinessProbe:
             httpGet:
-              path: /does-not-exist
+              path: /health
               port: 3002
             initialDelaySeconds: 5
             periodSeconds: 10
             failureThreshold: 3
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "300m"

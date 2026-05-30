@@ -22,6 +22,28 @@ const notificationsSentTotal = new client.Counter({
   labelNames: ['event_type']
 })
 
+function routeLabel(req) {
+  return req.route?.path || req.baseUrl || req.path || 'unknown'
+}
+
+function recordHttpMetrics(req, res, next) {
+  const start = process.hrtime.bigint()
+
+  res.on('finish', () => {
+    const durationMs = Number(process.hrtime.bigint() - start) / 1e6
+    const labels = {
+      method: req.method,
+      route: routeLabel(req),
+      status: String(res.statusCode)
+    }
+
+    httpRequestsTotal.inc(labels)
+    httpRequestDurationMs.observe(labels, durationMs)
+  })
+
+  next()
+}
+
 // Register metrics
 register.registerMetric(httpRequestsTotal)
 register.registerMetric(httpRequestDurationMs)
@@ -31,5 +53,6 @@ module.exports = {
   register,
   httpRequestsTotal,
   httpRequestDurationMs,
-  notificationsSentTotal
+  notificationsSentTotal,
+  recordHttpMetrics
 }

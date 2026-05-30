@@ -1,18 +1,31 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import express from 'express'
 import request from 'supertest'
+import { createRequire } from 'module'
+
+const mocks = vi.hoisted(() => ({
+  db: { query: vi.fn() },
+}))
 
 vi.mock('../db.js', () => ({
-  default: { query: vi.fn() },
+  ...mocks.db,
+  default: mocks.db,
 }))
 
 vi.mock('../publisher.js', () => ({
   publish: vi.fn().mockResolvedValue(undefined),
 }))
 
-import db from '../db.js'
-import { publish } from '../publisher.js'
-import routes from '../routes.js'
+const require = createRequire(import.meta.url)
+const db = mocks.db
+const publish = vi.fn().mockResolvedValue(undefined)
+const runWithSpan = vi.fn((name, operation) => operation())
+
+require.cache[require.resolve('../db.js')] = { exports: db }
+require.cache[require.resolve('../publisher.js')] = { exports: { publish } }
+require.cache[require.resolve('../telemetry.js')] = { exports: { runWithSpan } }
+
+const routes = require('../routes.js')
 
 const app = express()
 app.use(express.json())

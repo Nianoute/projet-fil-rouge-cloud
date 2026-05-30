@@ -29,6 +29,8 @@ spec:
                 secretKeyRef:
                   name: user-service-secret
                   key: db-password
+            - name: DATABASE_URL
+              value: "postgresql://taskflow_user:$(DB_PASSWORD)@postgres:5432/taskflow"
             - name: JWT_SECRET
               valueFrom:
                 secretKeyRef:

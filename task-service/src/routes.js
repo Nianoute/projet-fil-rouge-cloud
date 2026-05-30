@@ -2,6 +2,7 @@ const express = require("express");
 const db = require("./db");
 const { publish } = require("./publisher");
 const { tasksCreatedTotal, tasksStatusChangesTotal, tasksGauge } = require("./metrics");
+const { runWithSpan } = require("./telemetry");
 
 const router = express.Router();
 
@@ -89,11 +90,13 @@ router.post("/", async (req, res) => {
     // Track metric: task created with priority
     tasksCreatedTotal.inc({ priority: task.priority });
 
-    await publish("task.created", {
-      taskId: task.id,
-      title: task.title,
-      assigneeId: task.assignee_id,
-    });
+    await runWithSpan("publish.task.created", () =>
+      publish("task.created", {
+        taskId: task.id,
+        title: task.title,
+        assigneeId: task.assignee_id,
+      }),
+    );
 
     // Update gauge
     await updateTasksGauge();
@@ -144,12 +147,14 @@ router.patch("/:id", async (req, res) => {
         to_status: status,
       });
 
-      await publish("task.status_changed", {
-        taskId: task.id,
-        oldStatus: current.rows[0].status,
-        newStatus: status,
-        assigneeId: task.assignee_id,
-      });
+      await runWithSpan("publish.task.status_changed", () =>
+        publish("task.status_changed", {
+          taskId: task.id,
+          oldStatus: current.rows[0].status,
+          newStatus: status,
+          assigneeId: task.assignee_id,
+        }),
+      );
     }
 
     // Update gauge
