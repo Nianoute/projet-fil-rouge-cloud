@@ -2,7 +2,8 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: taskflow-alertmanager-config
-  namespace: monitoring
+  namespace: {{ .Release.Namespace }}
+type: Opaque
 stringData:
   alertmanager.yaml: |
     global:
@@ -17,6 +18,7 @@ stringData:
             send_resolved: true
     route:
       receiver: email
-      group_wait: 30s
+      group_by: ["alertname", "service"]
+      group_wait: 5s
       group_interval: 5m
       repeat_interval: 1h

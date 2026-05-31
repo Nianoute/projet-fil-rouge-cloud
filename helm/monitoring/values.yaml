@@ -1,0 +1,17 @@
+kube-prometheus-stack: {}
+
+serviceMonitors:
+  namespace: staging
+  services: []
+
+taskflowAlerts:
+  enabled: false
+  latencyThresholdMs: 500
+
+alertmanagerConfig:
+  smtp:
+    host: ""
+    from: ""
+    username: ""
+    password: ""
+    to: ""

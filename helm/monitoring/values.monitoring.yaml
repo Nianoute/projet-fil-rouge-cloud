@@ -1,18 +1,53 @@
-grafana:
-  sidecar:
-    dashboards:
-      enabled: true       # activate automatic loading of dashboards via ConfigMap
-      label: grafana_dashboard
-  grafana.ini:
-    server:
-      root_url: "http://localhost:3100"
-      serve_from_sub_path: true
+kube-prometheus-stack:
+  grafana:
+    sidecar:
+      dashboards:
+        enabled: true
+        label: grafana_dashboard
+        labelValue: "1"
+        searchNamespace: monitoring
+    grafana.ini:
+      server:
+        root_url: "http://localhost:3100"
+        serve_from_sub_path: true
 
-prometheus:
-  prometheusSpec:
-    retention: 7d
-    resources:
-      requests:
-        memory: "512Mi"
-      limits:
-        memory: "1Gi"
+  prometheus:
+    prometheusSpec:
+      retention: 7d
+      serviceMonitorNamespaceSelector: {}
+      serviceMonitorSelector:
+        matchLabels:
+          release: monitoring
+      ruleNamespaceSelector: {}
+      ruleSelector:
+        matchLabels:
+          release: monitoring
+      resources:
+        requests:
+          memory: "512Mi"
+        limits:
+          memory: "1Gi"
+
+  alertmanager:
+    alertmanagerSpec:
+      configSecret: taskflow-alertmanager-config
+
+serviceMonitors:
+  namespace: staging
+  services:
+    - name: api-gateway
+      port: http
+      path: /metrics
+    - name: user-service
+      port: http
+      path: /metrics
+    - name: task-service
+      port: http
+      path: /metrics
+    - name: notification-service
+      port: http
+      path: /metrics
+
+taskflowAlerts:
+  enabled: true
+  latencyThresholdMs: 500
